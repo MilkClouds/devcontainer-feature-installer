@@ -65,7 +65,7 @@ RUN curl -fsSL https://raw.githubusercontent.com/MilkClouds/devcontainer-feature
 ## Environment variables
 
 Installer:
-- `FEATURE_CLI_REPO` (default: `MilkClouds/devcontainer-features`)
+- `FEATURE_CLI_REPO` (default: `MilkClouds/devcontainer-feature-installer`)
 - `FEATURE_CLI_REF` (default: `main`)
 - `FEATURE_CLI_BIN_DIR` (default: `/usr/local/bin` or `~/.local/bin`)
 
