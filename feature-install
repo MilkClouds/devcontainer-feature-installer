@@ -75,6 +75,29 @@ ensure_valid_ref() {
     fi
 }
 
+extract_feature_layer_if_needed() {
+    local feature_dir="$1"
+    local feature_json="$feature_dir/devcontainer-feature.json"
+    if [ -f "$feature_json" ]; then
+        return 0
+    fi
+
+    local file=""
+    while IFS= read -r -d '' file; do
+        if tar -tf "$file" >/dev/null 2>&1; then
+            if tar -tf "$file" | grep -Eq '(^|/)devcontainer-feature\.json$'; then
+                tar -xf "$file" -C "$feature_dir"
+                return 0
+            fi
+        elif tar -tzf "$file" >/dev/null 2>&1; then
+            if tar -tzf "$file" | grep -Eq '(^|/)devcontainer-feature\.json$'; then
+                tar -xzf "$file" -C "$feature_dir"
+                return 0
+            fi
+        fi
+    done < <(find "$feature_dir" -type f -print0)
+}
+
 resolve_ref() {
     local ref="$1"
     local base_dir="$2"
@@ -143,6 +166,7 @@ fetch_feature() {
     feature_dir="$(mktemp -d)"
     FEATURE_TMP_DIRS+=("$feature_dir")
     "$ORAS_BIN_RESOLVED" pull --output "$feature_dir" "$feature_ref" >/dev/null
+    extract_feature_layer_if_needed "$feature_dir"
     echo "$feature_dir"
 }
 
@@ -259,7 +283,9 @@ while [ "${#queue[@]}" -gt 0 ]; do
     feature_dirs["$ref"]="$dir"
 
     feature_json="$dir/devcontainer-feature.json"
-    [ -f "$feature_json" ] || fail "Missing devcontainer-feature.json in $dir"
+    if [ ! -f "$feature_json" ]; then
+        fail "Missing devcontainer-feature.json in $dir (artifact is not a devcontainer feature, ref/tag is wrong, or layer archive could not be unpacked)"
+    fi
 
     installs_after["$ref"]=""
     while read -r after_ref; do
@@ -346,7 +372,9 @@ for feature_ref in "${ordered[@]}"; do
     feature_dir="${feature_dirs[$feature_ref]}"
     feature_json="$feature_dir/devcontainer-feature.json"
     install_sh="$feature_dir/install.sh"
-    [ -f "$feature_json" ] || fail "Missing devcontainer-feature.json in $feature_dir"
+    if [ ! -f "$feature_json" ]; then
+        fail "Missing devcontainer-feature.json in $feature_dir (artifact is not a devcontainer feature, ref/tag is wrong, or layer archive could not be unpacked)"
+    fi
     [ -f "$install_sh" ] || fail "Missing install.sh in $feature_dir"
 
     defaults="$(jq -c '(.options // {}) | to_entries | map({key: .key, value: (.value.default // "")}) | from_entries' "$feature_json")"
