@@ -9,7 +9,7 @@ It pulls Features from OCI registries (e.g., GHCR) and runs each Feature's
 ## Install (one-liner)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/MilkClouds/devcontainer-features/main/install-feature-cli.sh | bash
+curl -fsSL https://raw.githubusercontent.com/MilkClouds/devcontainer-feature-installer/main/install-feature-cli.sh | bash
 ```
 
 By default it installs to:
@@ -39,7 +39,7 @@ feature-install ./src/system-tools ./src/python-tools
 ## Dockerfile example
 
 ```Dockerfile
-RUN curl -fsSL https://raw.githubusercontent.com/MilkClouds/devcontainer-features/main/install-feature-cli.sh | bash \
+RUN curl -fsSL https://raw.githubusercontent.com/MilkClouds/devcontainer-feature-installer/main/install-feature-cli.sh | bash \
     && feature-install --features '{"ghcr.io/MilkClouds/devcontainer-features/system-tools:0.1.4": {}, "ghcr.io/MilkClouds/devcontainer-features/python-tools:0.1.4": {}}'
 ```
 
