@@ -3,19 +3,27 @@
 Install devcontainer Features directly inside Dockerfiles and build steps,
 without dragging a full devcontainer workflow along for the ride.
 
+WARNING: This project is designed to run inside container builds only.
+Do not run it on a host system.
+
 It pulls Features from OCI registries (e.g., GHCR) and runs each Feature's
 `install.sh` with option values exported as environment variables.
 
-## Install (uv tool)
+## Install (containers only)
+
+Use `/bin` inside containers:
+
+```bash
+FEATURE_CLI_BIN_DIR=/bin \
+  curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature-installer/main/install-feature-cli.sh | bash
+```
+
+Run this only inside containers (Dockerfile build or devcontainer image build).
+
+## Install (uv tool, containers only)
 
 ```bash
 uv tool install --from git+https://github.com/milkclouds/devcontainer-feature-installer
-```
-
-Or use the helper script (installs `uv` if missing):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature-installer/main/install-feature-cli.sh | bash
 ```
 
 ## Quick start (single feature, readable CLI)
