@@ -3,10 +3,10 @@ name: feature-install CI
 on:
   push:
     paths:
-      - "tools/**"
+      - "**"
   pull_request:
     paths:
-      - "tools/**"
+      - "**"
 
 jobs:
   test:
