@@ -1,0 +1,10 @@
+{
+  "id": "ia-c",
+  "version": "0.0.1",
+  "name": "ia-c",
+  "description": "installsAfter dependent",
+  "installsAfter": [
+    "../ia-b"
+  ],
+  "options": {}
+}

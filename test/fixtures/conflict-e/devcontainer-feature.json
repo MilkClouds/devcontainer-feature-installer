@@ -1,0 +1,12 @@
+{
+  "id": "conflict-e",
+  "version": "0.0.1",
+  "name": "conflict-e",
+  "description": "conflict target",
+  "options": {
+    "opt": {
+      "type": "string",
+      "default": "1"
+    }
+  }
+}

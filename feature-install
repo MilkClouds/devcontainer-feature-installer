@@ -1,0 +1,350 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VERSION="0.1.0"
+ORAS_TMP_DIR=""
+ORAS_BIN_RESOLVED=""
+FEATURE_TMP_DIRS=()
+
+cleanup() {
+    if [ -n "$ORAS_TMP_DIR" ] && [ -d "$ORAS_TMP_DIR" ]; then
+        rm -rf "$ORAS_TMP_DIR"
+    fi
+    if [ "${#FEATURE_TMP_DIRS[@]}" -gt 0 ]; then
+        for dir in "${FEATURE_TMP_DIRS[@]}"; do
+            if [ -n "$dir" ] && [ -d "$dir" ]; then
+                rm -rf "$dir"
+            fi
+        done
+    fi
+}
+trap cleanup EXIT
+
+fail() {
+    echo "feature-install: $*" >&2
+    exit 1
+}
+
+require_cmd() {
+    command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+}
+
+sanitize_var_name() {
+    printf "%s" "$1" | tr '[:lower:]' '[:upper:]' | tr -c 'A-Z0-9' '_'
+}
+
+has_readlink_f() {
+    command -v readlink >/dev/null 2>&1 && readlink -f / >/dev/null 2>&1
+}
+
+abs_path() {
+    if has_readlink_f; then
+        readlink -f "$1"
+        return
+    fi
+    python - <<'PY' "$1"
+import os
+import sys
+print(os.path.abspath(sys.argv[1]))
+PY
+}
+
+is_local_ref() {
+    local ref="$1"
+    case "$ref" in
+        /*|./*|../*) return 0 ;;
+    esac
+    [ -d "$ref" ]
+}
+
+resolve_ref() {
+    local ref="$1"
+    local base_dir="$2"
+    if is_local_ref "$ref" || [ -d "$base_dir/$ref" ]; then
+        if [ "${ref#/}" != "$ref" ]; then
+            abs_path "$ref"
+        else
+            abs_path "$base_dir/$ref"
+        fi
+        return
+    fi
+    printf "%s" "$ref"
+}
+
+ensure_oras() {
+    if [ -n "${ORAS_BIN:-}" ]; then
+        command -v "$ORAS_BIN" >/dev/null 2>&1 || fail "ORAS_BIN is set but not found: $ORAS_BIN"
+        echo "$ORAS_BIN"
+        return
+    fi
+
+    if command -v oras >/dev/null 2>&1; then
+        echo "oras"
+        return
+    fi
+
+    require_cmd curl
+    require_cmd tar
+
+    local arch
+    arch="$(uname -m)"
+    case "$arch" in
+        x86_64|amd64) arch="amd64" ;;
+        aarch64|arm64) arch="arm64" ;;
+        *) fail "Unsupported architecture for oras: $arch" ;;
+    esac
+
+    local version="1.1.0"
+    ORAS_TMP_DIR="$(mktemp -d)"
+    local tarball="$ORAS_TMP_DIR/oras.tar.gz"
+    local url="https://github.com/oras-project/oras/releases/download/v${version}/oras_${version}_linux_${arch}.tar.gz"
+
+    curl -fsSL "$url" -o "$tarball"
+    tar -xzf "$tarball" -C "$ORAS_TMP_DIR"
+    chmod +x "$ORAS_TMP_DIR/oras"
+    echo "$ORAS_TMP_DIR/oras"
+}
+
+fetch_feature() {
+    local feature_ref="$1"
+    local feature_dir=""
+
+    if is_local_ref "$feature_ref"; then
+        feature_dir="$feature_ref"
+        [ -d "$feature_dir" ] || fail "Feature path not found: $feature_dir"
+        echo "$feature_dir"
+        return
+    fi
+
+    if [ -z "$ORAS_BIN_RESOLVED" ]; then
+        ORAS_BIN_RESOLVED="$(ensure_oras)"
+    fi
+
+    feature_dir="$(mktemp -d)"
+    FEATURE_TMP_DIRS+=("$feature_dir")
+    "$ORAS_BIN_RESOLVED" pull --output "$feature_dir" "$feature_ref" >/dev/null
+    echo "$feature_dir"
+}
+
+read_depends_on() {
+    local feature_json="$1"
+    jq -c '(.dependsOn // {}) | to_entries[]?' "$feature_json"
+}
+
+read_installs_after() {
+    local feature_json="$1"
+    jq -r '(.installsAfter // [])[]?' "$feature_json"
+}
+
+usage() {
+    cat <<'EOF'
+Usage:
+  feature-install --features '<json>'
+  feature-install --features-file <path>
+  feature-install <feature-ref> [<feature-ref>...]
+  feature-install --version
+  feature-install --dry-run <feature-ref> [<feature-ref>...]
+
+Examples:
+  feature-install ghcr.io/MilkClouds/devcontainer-features/system-tools:0.1.4
+  feature-install --features '{"ghcr.io/MilkClouds/devcontainer-features/python-tools:0.1.4":{"tools":"ruff"}}'
+  feature-install --features-file devcontainer.json
+EOF
+}
+
+features_json=""
+features_file=""
+dry_run=false
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --version)
+            echo "$VERSION"
+            exit 0
+            ;;
+        --features)
+            features_json="${2:-}"
+            shift 2
+            ;;
+        --features-file)
+            features_file="${2:-}"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            fail "Unknown option: $1"
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+require_cmd jq
+
+if [ -n "$features_file" ]; then
+    [ -f "$features_file" ] || fail "Features file not found: $features_file"
+    if jq -e '.features' "$features_file" >/dev/null 2>&1; then
+        features_json="$(jq -c '.features' "$features_file")"
+    else
+        features_json="$(jq -c '.' "$features_file")"
+    fi
+fi
+
+if [ -z "$features_json" ]; then
+    if [ $# -eq 0 ]; then
+        usage
+        exit 1
+    fi
+    features_json="$(printf "%s\n" "$@" | jq -R 'select(length>0) | {(.): {}}' | jq -s 'add')"
+fi
+
+declare -A feature_opts
+declare -A feature_dirs
+declare -A feature_seen
+declare -A adj
+declare -A installs_after
+
+queue=()
+while read -r entry; do
+    ref="$(printf "%s" "$entry" | jq -r '.key')"
+    if is_local_ref "$ref"; then
+        ref="$(abs_path "$ref")"
+    fi
+    opts="$(printf "%s" "$entry" | jq -c '.value // {}')"
+    feature_opts["$ref"]="$opts"
+    queue+=("$ref")
+done < <(echo "$features_json" | jq -c 'to_entries[]')
+
+while [ "${#queue[@]}" -gt 0 ]; do
+    ref="${queue[0]}"
+    queue=("${queue[@]:1}")
+
+    if [ -n "${feature_seen[$ref]+x}" ]; then
+        continue
+    fi
+    feature_seen["$ref"]=1
+
+    dir="$(fetch_feature "$ref")"
+    feature_dirs["$ref"]="$dir"
+
+    feature_json="$dir/devcontainer-feature.json"
+    [ -f "$feature_json" ] || fail "Missing devcontainer-feature.json in $dir"
+
+    installs_after["$ref"]=""
+    while read -r after_ref; do
+        if [ -n "$after_ref" ]; then
+            resolved_after="$(resolve_ref "$after_ref" "$dir")"
+            installs_after["$ref"]="${installs_after[$ref]:-} $resolved_after"
+        fi
+    done < <(read_installs_after "$feature_json")
+
+    while read -r dep_entry; do
+        dep_ref="$(printf "%s" "$dep_entry" | jq -r '.key')"
+        dep_ref="$(resolve_ref "$dep_ref" "$dir")"
+        dep_opts="$(printf "%s" "$dep_entry" | jq -c '.value // {}')"
+
+        if [ -z "${feature_opts[$dep_ref]+x}" ]; then
+            feature_opts["$dep_ref"]="$dep_opts"
+        else
+            if [ "${feature_opts[$dep_ref]}" != "$dep_opts" ]; then
+                fail "Option conflict for feature ${dep_ref}. Existing: ${feature_opts[$dep_ref]} New: ${dep_opts}"
+            fi
+        fi
+        adj["$dep_ref"]="${adj[$dep_ref]:-} $ref"
+        queue+=("$dep_ref")
+    done < <(read_depends_on "$feature_json")
+done
+
+declare -A indegree
+ordered=()
+
+for ref in "${!feature_seen[@]}"; do
+    for after_ref in ${installs_after[$ref]:-}; do
+        if [ -n "${feature_seen[$after_ref]+x}" ]; then
+            adj["$after_ref"]="${adj[$after_ref]:-} $ref"
+        fi
+    done
+done
+
+for ref in "${!feature_seen[@]}"; do
+    indegree["$ref"]=0
+done
+
+for dep_ref in "${!adj[@]}"; do
+    for node in ${adj[$dep_ref]}; do
+        indegree["$node"]=$((indegree["$node"] + 1))
+    done
+done
+
+ready=()
+for ref in "${!indegree[@]}"; do
+    if [ "${indegree[$ref]}" -eq 0 ]; then
+        ready+=("$ref")
+    fi
+done
+
+while [ "${#ready[@]}" -gt 0 ]; do
+    ref="${ready[0]}"
+    ready=("${ready[@]:1}")
+    ordered+=("$ref")
+    for node in ${adj[$ref]:-}; do
+        indegree["$node"]=$((indegree["$node"] - 1))
+        if [ "${indegree[$node]}" -eq 0 ]; then
+            ready+=("$node")
+        fi
+    done
+done
+
+if [ "${#ordered[@]}" -ne "${#feature_seen[@]}" ]; then
+    fail "Dependency cycle detected in dependsOn/installsAfter"
+fi
+
+if [ "$dry_run" = true ]; then
+    echo "Install order:"
+    for feature_ref in "${ordered[@]}"; do
+        echo "  $feature_ref"
+    done
+    exit 0
+fi
+
+for feature_ref in "${ordered[@]}"; do
+    if [ -z "$feature_ref" ] || [ "$feature_ref" = "null" ]; then
+        continue
+    fi
+
+    feature_dir="${feature_dirs[$feature_ref]}"
+    feature_json="$feature_dir/devcontainer-feature.json"
+    install_sh="$feature_dir/install.sh"
+    [ -f "$feature_json" ] || fail "Missing devcontainer-feature.json in $feature_dir"
+    [ -f "$install_sh" ] || fail "Missing install.sh in $feature_dir"
+
+    defaults="$(jq -c '(.options // {}) | to_entries | map({key: .key, value: (.value.default // "")}) | from_entries' "$feature_json")"
+    if [ -n "${feature_opts[$feature_ref]+x}" ]; then
+        opts="${feature_opts[$feature_ref]}"
+    else
+        opts="{}"
+    fi
+    merged="$(jq -c --argjson defaults "$defaults" --argjson opts "$opts" '$defaults * $opts' <<<"{}")"
+
+    echo "Installing feature: $feature_ref"
+    (
+        while read -r key value; do
+            env_key="$(sanitize_var_name "$key")"
+            export "$env_key=$value"
+        done < <(printf "%s" "$merged" | jq -r 'to_entries[] | "\(.key) \(.value|tostring)"')
+
+        chmod +x "$install_sh"
+        bash "$install_sh"
+    )
+done

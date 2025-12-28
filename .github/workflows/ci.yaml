@@ -1,0 +1,30 @@
+name: feature-install CI
+
+on:
+  push:
+    paths:
+      - "tools/**"
+  pull_request:
+    paths:
+      - "tools/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bats shellcheck jq curl tar
+
+      - name: Lint
+        run: |
+          shellcheck feature-install install-feature-cli.sh \
+            test/run.sh test/test_helper.bash \
+            test/fixtures/*/install.sh
+
+      - name: Test
+        run: bats test/feature-install.bats

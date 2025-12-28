@@ -1,0 +1,12 @@
+{
+  "id": "conflict-a",
+  "version": "0.0.1",
+  "name": "conflict-a",
+  "description": "conflict source",
+  "dependsOn": {
+    "../conflict-e": {
+      "opt": "1"
+    }
+  },
+  "options": {}
+}

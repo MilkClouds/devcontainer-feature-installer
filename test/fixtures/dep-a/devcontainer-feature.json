@@ -1,0 +1,10 @@
+{
+  "id": "dep-a",
+  "version": "0.0.1",
+  "name": "dep-a",
+  "description": "Dependency A",
+  "dependsOn": {
+    "../dep-b": {}
+  },
+  "options": {}
+}

@@ -1,0 +1,7 @@
+{
+  "id": "dep-b",
+  "version": "0.0.1",
+  "name": "dep-b",
+  "description": "Dependency B",
+  "options": {}
+}
