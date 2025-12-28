@@ -14,7 +14,7 @@ It pulls Features from OCI registries (e.g., GHCR) and runs each Feature's
 Use `/bin` inside containers:
 
 ```bash
-FEATURE_CLI_BIN_DIR=/bin \
+RUN FEATURE_CLI_BIN_DIR=/bin \
   curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature-installer/main/install-feature-cli.sh | bash
 ```
 
@@ -23,13 +23,13 @@ Run this only inside containers (Dockerfile build or devcontainer image build).
 ## Install (uv tool, containers only)
 
 ```bash
-uv tool install --from git+https://github.com/milkclouds/devcontainer-feature-installer
+RUN uv tool install --from git+https://github.com/milkclouds/devcontainer-feature-installer
 ```
 
 ## Quick start (single feature, readable CLI)
 
 ```bash
-feature-install ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4 \
+RUN feature-install ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4 \
   --set tools=ruff
 ```
 
@@ -38,7 +38,7 @@ feature-install ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4 \
 Multiple features with options:
 
 ```bash
-feature-install --features '{
+RUN feature-install --features '{
   "ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4": {},
   "ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4": {"tools":"ruff"}
 }'
@@ -47,19 +47,19 @@ feature-install --features '{
 Read from devcontainer.json:
 
 ```bash
-feature-install --features-file devcontainer.json
+RUN feature-install --features-file devcontainer.json
 ```
 
 Dry-run install order:
 
 ```bash
-feature-install --dry-run ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4
+RUN feature-install --dry-run ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4
 ```
 
 Local feature paths:
 
 ```bash
-feature-install ./src/system-tools ./src/python-tools
+RUN feature-install ./src/system-tools ./src/python-tools
 ```
 
 ## Dockerfile example
