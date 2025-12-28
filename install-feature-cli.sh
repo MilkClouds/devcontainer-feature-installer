@@ -10,40 +10,26 @@ require_cmd() {
     command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
 }
 
-if ! command -v uv >/dev/null 2>&1; then
-    echo "uv not found; installing via https://astral.sh/uv/install.sh" >&2
-    require_cmd curl
-    curl -fsSL https://astral.sh/uv/install.sh | sh
-    if [ -d "$HOME/.local/bin" ]; then
-        export PATH="$HOME/.local/bin:$PATH"
-    fi
-fi
-require_cmd uv
+require_cmd curl
 
 repo="${FEATURE_CLI_REPO:-milkclouds/devcontainer-feature-installer}"
 ref="${FEATURE_CLI_REF:-main}"
-package="feature-install"
-source_url="git+https://github.com/${repo}@${ref}"
+bin_name="feature-install"
+url="https://raw.githubusercontent.com/${repo}/${ref}/${bin_name}"
 
 bin_dir="${FEATURE_CLI_BIN_DIR:-}"
-
-uv --no-cache tool install --from "$source_url" "$package"
-
-local_bin="$HOME/.local/bin/$package"
-if [ ! -x "$local_bin" ]; then
-    if [ -d "$HOME/.local/bin" ]; then
-        export PATH="$HOME/.local/bin:$PATH"
+if [ -z "$bin_dir" ]; then
+    if [ "$(id -u)" -eq 0 ] && [ -w "/bin" ]; then
+        bin_dir="/bin"
+    elif [ "$(id -u)" -eq 0 ] && [ -w "/usr/local/bin" ]; then
+        bin_dir="/usr/local/bin"
+    else
+        bin_dir="$HOME/.local/bin"
     fi
-    local_bin="$(command -v "$package" || true)"
 fi
 
-[ -n "$local_bin" ] || fail "Unable to locate $package after installation"
+mkdir -p "$bin_dir"
+curl -fsSL "$url" -o "$bin_dir/$bin_name"
+chmod +x "$bin_dir/$bin_name"
 
-if [ -n "$bin_dir" ]; then
-    mkdir -p "$bin_dir"
-    cp "$local_bin" "$bin_dir/$package"
-    chmod +x "$bin_dir/$package"
-    local_bin="$bin_dir/$package"
-fi
-
-echo "Installed $package to $local_bin"
+echo "Installed $bin_name to $bin_dir/$bin_name"

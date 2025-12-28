@@ -11,7 +11,7 @@ It pulls Features from OCI registries (e.g., GHCR) and runs each Feature's
 
 ## Install (containers only)
 
-Use `/bin` inside containers:
+Use `/bin` inside containers (recommended):
 
 ```bash
 RUN curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature-installer/main/install-feature-cli.sh \
@@ -20,17 +20,10 @@ RUN curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature
 
 Run this only inside containers (Dockerfile build or devcontainer image build).
 
-## Install (uv tool, containers only)
+## Quick start (single feature)
 
 ```bash
-RUN uv tool install --no-cache --from git+https://github.com/milkclouds/devcontainer-feature-installer
-```
-
-## Quick start (single feature, readable CLI)
-
-```bash
-RUN feature-install ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4 \
-  --set tools=ruff
+RUN feature-install ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4
 ```
 
 ## Advanced usage
@@ -65,17 +58,19 @@ RUN feature-install ./src/system-tools ./src/python-tools
 ## Dockerfile example
 
 ```Dockerfile
-RUN uv tool install --from git+https://github.com/milkclouds/devcontainer-feature-installer \
+RUN curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature-installer/main/install-feature-cli.sh \
+    | FEATURE_CLI_BIN_DIR=/bin bash \
     && feature-install ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4 \
-    && feature-install ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4 --set tools=ruff
+    && feature-install --features '{\"ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4\":{\"tools\":\"ruff\"}}'
 ```
 
 ## Requirements
 
-- Python 3.9+
-- `bash` (to execute `install.sh`)
+- `bash`
+- `jq`
+- `curl`
+- `tar`
 - `oras` (auto-downloaded if missing)
-- `uv` (installation)
 
 ## Options resolution
 
@@ -93,7 +88,7 @@ RUN uv tool install --from git+https://github.com/milkclouds/devcontainer-featur
 Installer:
 - `FEATURE_CLI_REPO` (default: `milkclouds/devcontainer-feature-installer`)
 - `FEATURE_CLI_REF` (default: `main`)
-- `FEATURE_CLI_BIN_DIR` to copy the executable to a specific path
+- `FEATURE_CLI_BIN_DIR` (optional) to set install path (e.g. `/bin`)
 
 Runner:
 - `ORAS_BIN` to use a specific `oras` binary
@@ -105,7 +100,7 @@ Runner:
 ## Tests
 
 ```bash
-python -m pytest
+bats test/feature-install.bats
 ```
 
 ## CI
