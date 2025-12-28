@@ -57,6 +57,24 @@ is_local_ref() {
     [ -d "$ref" ]
 }
 
+ensure_valid_ref() {
+    local ref="$1"
+    local ref_no_digest="${ref%@*}"
+    if [ "${ref_no_digest%:}" != "$ref_no_digest" ]; then
+        fail "Invalid feature reference: tag is empty (e.g. use ':latest' or a version tag)"
+    fi
+
+    local repo="$ref_no_digest"
+    local last_segment="${repo##*/}"
+    if printf "%s" "$last_segment" | grep -q ":"; then
+        repo="${repo%:*}"
+    fi
+
+    if printf "%s" "$repo" | grep -q '[A-Z]'; then
+        fail "Invalid feature reference: repository path must be lowercase (e.g. ghcr.io/milkclouds/...)"
+    fi
+}
+
 resolve_ref() {
     local ref="$1"
     local base_dir="$2"
@@ -115,6 +133,8 @@ fetch_feature() {
         echo "$feature_dir"
         return
     fi
+
+    ensure_valid_ref "$feature_ref"
 
     if [ -z "$ORAS_BIN_RESOLVED" ]; then
         ORAS_BIN_RESOLVED="$(ensure_oras)"
