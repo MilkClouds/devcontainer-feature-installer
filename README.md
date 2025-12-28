@@ -14,8 +14,8 @@ It pulls Features from OCI registries (e.g., GHCR) and runs each Feature's
 Use `/bin` inside containers:
 
 ```bash
-RUN FEATURE_CLI_BIN_DIR=/bin \
-  curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature-installer/main/install-feature-cli.sh | bash
+RUN curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature-installer/main/install-feature-cli.sh \
+  | FEATURE_CLI_BIN_DIR=/bin bash
 ```
 
 Run this only inside containers (Dockerfile build or devcontainer image build).
