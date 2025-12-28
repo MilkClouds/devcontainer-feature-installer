@@ -23,7 +23,7 @@ Run this only inside containers (Dockerfile build or devcontainer image build).
 ## Install (uv tool, containers only)
 
 ```bash
-RUN uv tool install --from git+https://github.com/milkclouds/devcontainer-feature-installer
+RUN uv tool install --no-cache --from git+https://github.com/milkclouds/devcontainer-feature-installer
 ```
 
 ## Quick start (single feature, readable CLI)
@@ -93,6 +93,7 @@ RUN uv tool install --from git+https://github.com/milkclouds/devcontainer-featur
 Installer:
 - `FEATURE_CLI_REPO` (default: `milkclouds/devcontainer-feature-installer`)
 - `FEATURE_CLI_REF` (default: `main`)
+- `FEATURE_CLI_BIN_DIR` to copy the executable to a specific path
 
 Runner:
 - `ORAS_BIN` to use a specific `oras` binary

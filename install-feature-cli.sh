@@ -27,7 +27,7 @@ source_url="git+https://github.com/${repo}@${ref}"
 
 bin_dir="${FEATURE_CLI_BIN_DIR:-}"
 
-uv tool install --from "$source_url" "$package"
+uv --no-cache tool install --from "$source_url" "$package"
 
 local_bin="$HOME/.local/bin/$package"
 if [ ! -x "$local_bin" ]; then
