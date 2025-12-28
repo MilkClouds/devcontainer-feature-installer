@@ -15,16 +15,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v3
+
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends bats shellcheck jq curl tar
+        run: uv sync --dev --frozen
 
       - name: Lint
         run: |
-          shellcheck feature-install install-feature-cli.sh \
-            test/run.sh test/test_helper.bash \
-            test/fixtures/*/install.sh
+          uv run ruff check --fix
+          uv run ruff format --check
 
       - name: Test
-        run: bats test/feature-install.bats
+        run: uv run pytest

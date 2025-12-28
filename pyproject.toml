@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.24.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "feature-install"
+version = "0.1.0"
+description = "Install devcontainer Features directly in Dockerfile or build steps."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "typer>=0.12.0",
+]
+
+[project.scripts]
+feature-install = "feature_install.cli:app"
+
+[dependency-groups]
+dev = [
+  "pytest>=7.4.0",
+  "ruff>=0.6.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/feature_install"]
+
+[tool.ruff]
+line-length = 119
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

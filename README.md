@@ -1,36 +1,54 @@
 # feature-install
 
-Minimal CLI to install devcontainer Features directly in a Dockerfile or a
-plain container build step.
+Install devcontainer Features directly inside Dockerfiles and build steps,
+without dragging a full devcontainer workflow along for the ride.
 
 It pulls Features from OCI registries (e.g., GHCR) and runs each Feature's
-`install.sh` as root with option values exported as environment variables.
+`install.sh` with option values exported as environment variables.
 
-## Install (one-liner)
+## Install (uv tool)
+
+```bash
+uv tool install --from git+https://github.com/milkclouds/devcontainer-feature-installer
+```
+
+Or use the helper script (installs `uv` if missing):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature-installer/main/install-feature-cli.sh | bash
 ```
 
-By default it installs to:
-- `/usr/local/bin` when run as root
-- `~/.local/bin` when run as a normal user
-
-## Usage
+## Quick start (single feature, readable CLI)
 
 ```bash
-feature-install ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4
+feature-install ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4 \
+  --set tools=ruff
+```
 
-feature-install --features '{"ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4":{"tools":"ruff"}}'
+## Advanced usage
 
+Multiple features with options:
+
+```bash
+feature-install --features '{
+  "ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4": {},
+  "ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4": {"tools":"ruff"}
+}'
+```
+
+Read from devcontainer.json:
+
+```bash
 feature-install --features-file devcontainer.json
+```
 
-feature-install --version
+Dry-run install order:
 
+```bash
 feature-install --dry-run ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4
 ```
 
-You can also pass local feature paths:
+Local feature paths:
 
 ```bash
 feature-install ./src/system-tools ./src/python-tools
@@ -39,17 +57,17 @@ feature-install ./src/system-tools ./src/python-tools
 ## Dockerfile example
 
 ```Dockerfile
-RUN curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature-installer/main/install-feature-cli.sh | bash \
-    && feature-install --features '{"ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4": {}, "ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4": {}}'
+RUN uv tool install --from git+https://github.com/milkclouds/devcontainer-feature-installer \
+    && feature-install ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4 \
+    && feature-install ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4 --set tools=ruff
 ```
 
 ## Requirements
 
-- `bash`
-- `jq`
-- `curl`
-- `tar`
+- Python 3.9+
+- `bash` (to execute `install.sh`)
 - `oras` (auto-downloaded if missing)
+- `uv` (installation)
 
 ## Options resolution
 
@@ -67,7 +85,6 @@ RUN curl -fsSL https://raw.githubusercontent.com/milkclouds/devcontainer-feature
 Installer:
 - `FEATURE_CLI_REPO` (default: `milkclouds/devcontainer-feature-installer`)
 - `FEATURE_CLI_REF` (default: `main`)
-- `FEATURE_CLI_BIN_DIR` (default: `/usr/local/bin` or `~/.local/bin`)
 
 Runner:
 - `ORAS_BIN` to use a specific `oras` binary
@@ -78,10 +95,8 @@ Runner:
 
 ## Tests
 
-Use `bats-core`:
-
 ```bash
-bats test/feature-install.bats
+python -m pytest
 ```
 
 ## CI

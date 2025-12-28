@@ -10,22 +10,20 @@ require_cmd() {
     command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
 }
 
-require_cmd curl
+if ! command -v uv >/dev/null 2>&1; then
+    echo "uv not found; installing via https://astral.sh/uv/install.sh" >&2
+    require_cmd curl
+    curl -fsSL https://astral.sh/uv/install.sh | sh
+    if [ -d "$HOME/.local/bin" ]; then
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+fi
+require_cmd uv
 
 repo="${FEATURE_CLI_REPO:-milkclouds/devcontainer-feature-installer}"
 ref="${FEATURE_CLI_REF:-main}"
-bin_name="feature-install"
-url="https://raw.githubusercontent.com/${repo}/${ref}/${bin_name}"
+package="feature-install"
+source_url="git+https://github.com/${repo}@${ref}"
 
-install_dir="/usr/local/bin"
-if [ -n "${FEATURE_CLI_BIN_DIR:-}" ]; then
-    install_dir="$FEATURE_CLI_BIN_DIR"
-elif [ "$(id -u)" -ne 0 ]; then
-    install_dir="$HOME/.local/bin"
-fi
-
-mkdir -p "$install_dir"
-curl -fsSL "$url" -o "$install_dir/$bin_name"
-chmod +x "$install_dir/$bin_name"
-
-echo "Installed $bin_name to $install_dir/$bin_name"
+uv tool install --from "$source_url" "$package"
+echo "Installed $package via uv tool"
