@@ -146,8 +146,8 @@ Usage:
   feature-install --dry-run <feature-ref> [<feature-ref>...]
 
 Examples:
-  feature-install ghcr.io/MilkClouds/devcontainer-features/system-tools:0.1.4
-  feature-install --features '{"ghcr.io/MilkClouds/devcontainer-features/python-tools:0.1.4":{"tools":"ruff"}}'
+  feature-install ghcr.io/milkclouds/devcontainer-features/system-tools:0.1.4
+  feature-install --features '{"ghcr.io/milkclouds/devcontainer-features/python-tools:0.1.4":{"tools":"ruff"}}'
   feature-install --features-file devcontainer.json
 EOF
 }

@@ -12,7 +12,7 @@ require_cmd() {
 
 require_cmd curl
 
-repo="${FEATURE_CLI_REPO:-MilkClouds/devcontainer-feature-installer}"
+repo="${FEATURE_CLI_REPO:-milkclouds/devcontainer-feature-installer}"
 ref="${FEATURE_CLI_REF:-main}"
 bin_name="feature-install"
 url="https://raw.githubusercontent.com/${repo}/${ref}/${bin_name}"
